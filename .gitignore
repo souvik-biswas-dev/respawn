@@ -1,0 +1,19 @@
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.auto.tfvars
+crash.log
+# secrets: never commit private keys
+*.agekey
+keys.txt
+*.pem
+.env
+tfplan
+.kubeconfig/
+infra/ansible/inventory/hosts.yml
+# console
+site/node_modules/
+site/dist/
+site/public/data/
