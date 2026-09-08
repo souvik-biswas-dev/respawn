@@ -1,0 +1,14 @@
+#cloud-config
+# Minimal on purpose: only enough to let Ansible in. Hardening belongs in Ansible
+# so that it is applied the same way on a rebuilt server and on a drifted one.
+users:
+  - name: ${ops_username}
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+package_update: true
+packages:
+  - python3 # Ansible needs a Python interpreter on the target
