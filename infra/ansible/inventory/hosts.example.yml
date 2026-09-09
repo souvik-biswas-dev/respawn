@@ -1,0 +1,18 @@
+---
+# Copy to inventory/hosts.yml (git-ignored) and fill in. Contains no secrets.
+all:
+  children:
+    respawn:
+      hosts:
+        respawn-1:
+          # Terraform output `server_ip`:  terraform -chdir=../terraform/envs/prod output -raw server_ip
+          ansible_host: 203.0.113.20
+          ansible_user: ops
+          # Safety latch. When true, the playbook refuses to run unless you add
+          # `-e confirm_protected=yes`. Set it on anything that is not a disposable demo server.
+          respawn_protected: false
+      vars:
+        # Public address written into the fetched kubeconfig and the k3s API certificate.
+        k3s_public_address: 203.0.113.20
+        # REQUIRED for step 3: the Git URL ArgoCD will watch (public repo, https).
+        argocd_bootstrap_repo_url: https://github.com/YOUR-USER/respawn.git

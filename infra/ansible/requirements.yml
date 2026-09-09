@@ -1,0 +1,9 @@
+---
+# Install with: ansible-galaxy collection install -r requirements.yml
+collections:
+  - name: community.general # ufw module
+    version: ">=9.0.0"
+  - name: ansible.posix # sysctl module
+    version: ">=1.5.0"
+  - name: kubernetes.core # k8s / k8s_info modules
+    version: ">=3.0.0"
