@@ -1,0 +1,147 @@
+---
+- name: Install hardening packages
+  ansible.builtin.apt:
+    name: "{{ hardening_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# ---- ssh -------------------------------------------------------------------
+- name: Check that each allowed ssh user already has an authorized key
+  ansible.builtin.stat:
+    path: "/home/{{ item }}/.ssh/authorized_keys"
+  loop: "{{ hardening_ssh_allowed_users }}"
+  register: hardening_ssh_key_check
+
+- name: Refuse to disable password login if it could lock everyone out
+  ansible.builtin.assert:
+    that: item.stat.exists
+    fail_msg: "/home/{{ item.item }}/.ssh/authorized_keys is missing; refusing to turn off password login."
+    quiet: true
+  loop: "{{ hardening_ssh_key_check.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Write ssh hardening drop-in
+  ansible.builtin.template:
+    src: 10-respawn.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-respawn.conf
+    owner: root
+    group: root
+    mode: "0644"
+    # Check the fragment before it replaces the live file, so a typo cannot break sshd.
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart ssh
+
+# ---- firewall --------------------------------------------------------------
+- name: Allow ssh in ufw (rate limited)
+  community.general.ufw:
+    rule: limit
+    port: "22"
+    proto: tcp
+
+- name: Allow web and kubernetes api ports in ufw
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: "{{ hardening_ufw_allowed_tcp_ports }}"
+
+- name: Allow k3s pod and service networks to reach the host
+  community.general.ufw:
+    rule: allow
+    from_ip: "{{ item }}"
+    comment: k3s internal network
+  loop: "{{ hardening_ufw_k3s_cidrs }}"
+
+- name: Deny incoming traffic by default
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+
+- name: Allow outgoing traffic by default
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+
+- name: Allow routed traffic (pod to internet via k3s)
+  community.general.ufw:
+    direction: routed
+    policy: allow
+
+- name: Enable ufw
+  # Enabled last, after the ssh rule exists, so the session is not cut off.
+  community.general.ufw:
+    state: enabled
+
+# ---- fail2ban --------------------------------------------------------------
+- name: Configure fail2ban
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable fail2ban at boot
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+
+# ---- unattended upgrades ---------------------------------------------------
+- name: Enable automatic security updates
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "/etc/apt/apt.conf.d/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: 20auto-upgrades.j2, dest: 20auto-upgrades }
+    - { src: 52respawn-unattended.j2, dest: 52respawn-unattended }
+
+# ---- kernel settings -------------------------------------------------------
+# ip_forward is NOT touched: k3s needs it on. rp_filter is loose (2) because
+# flannel can route asymmetrically and strict filtering drops that traffic.
+- name: Apply sysctl hardening
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/60-respawn.conf
+    state: present
+    reload: true
+  loop:
+    - { name: net.ipv4.conf.all.rp_filter, value: "2" }
+    - { name: net.ipv4.conf.default.rp_filter, value: "2" }
+    - { name: net.ipv4.conf.all.accept_redirects, value: "0" }
+    - { name: net.ipv4.conf.default.accept_redirects, value: "0" }
+    - { name: net.ipv4.conf.all.send_redirects, value: "0" }
+    - { name: net.ipv4.tcp_syncookies, value: "1" }
+    - { name: kernel.kptr_restrict, value: "2" }
+    - { name: kernel.dmesg_restrict, value: "1" }
+
+# ---- auditd ----------------------------------------------------------------
+- name: Install audit rules
+  ansible.builtin.template:
+    src: respawn.rules.j2
+    dest: /etc/audit/rules.d/respawn.rules
+    owner: root
+    group: root
+    mode: "0640"
+  notify: Load audit rules
+
+- name: Enable auditd at boot
+  ansible.builtin.service:
+    name: auditd
+    state: started
+    enabled: true
+
+# ---- time ------------------------------------------------------------------
+# Correct time matters for TLS certificates and for comparing log and canary timestamps.
+- name: Enable time sync
+  ansible.builtin.service:
+    name: chrony
+    state: started
+    enabled: true

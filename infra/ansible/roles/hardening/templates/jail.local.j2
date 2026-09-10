@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+[DEFAULT]
+bantime  = {{ hardening_fail2ban_bantime }}
+findtime = {{ hardening_fail2ban_findtime }}
+maxretry = {{ hardening_fail2ban_maxretry }}
+ignoreip = {{ hardening_fail2ban_ignoreip | join(' ') }}
+backend  = systemd
+
+[sshd]
+enabled = true
