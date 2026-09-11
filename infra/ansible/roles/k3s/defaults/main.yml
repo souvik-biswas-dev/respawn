@@ -1,0 +1,18 @@
+---
+# Pinned on purpose: a rebuild must produce the same cluster version every time.
+# Bump deliberately; check the tag exists at https://github.com/k3s-io/k3s/releases
+k3s_version: "v1.31.4+k3s1"
+
+k3s_installer_url: https://get.k3s.io
+k3s_installer_path: /usr/local/share/k3s-install.sh
+
+# Address written into the API certificate and the fetched kubeconfig.
+# Usually the Terraform `server_ip`; set it in the inventory.
+k3s_public_address: "{{ ansible_host | default(inventory_hostname) }}"
+k3s_extra_tls_sans: []
+
+# Encrypts Secret objects in etcd (the k3s datastore). Cheap and worth having.
+k3s_secrets_encryption: true
+
+# Where the kubeconfig lands on the machine running Ansible. 0600, git-ignored.
+k3s_kubeconfig_local_path: "{{ playbook_dir }}/../../.kubeconfig/respawn.yaml"

@@ -1,0 +1,73 @@
+---
+- name: Check the repo URL is set when the root app will be applied
+  ansible.builtin.assert:
+    that: argocd_bootstrap_repo_url | length > 0
+    fail_msg: "Set argocd_bootstrap_repo_url in the inventory, or set argocd_bootstrap_apply_root_app: false."
+    quiet: true
+  when: argocd_bootstrap_apply_root_app | bool
+
+- name: Install the Python libraries the kubernetes modules need on the server
+  ansible.builtin.apt:
+    name:
+      - python3-kubernetes
+      - python3-yaml
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create respawn working directory
+  ansible.builtin.file:
+    path: /opt/respawn
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download the pinned ArgoCD manifest
+  ansible.builtin.get_url:
+    url: "{{ argocd_bootstrap_manifest_url }}"
+    dest: "{{ argocd_bootstrap_manifest_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Create the argocd namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ argocd_bootstrap_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ argocd_bootstrap_namespace }}"
+
+- name: Apply the ArgoCD manifest
+  # Server-side apply: some ArgoCD CRDs exceed the size limit of client-side apply.
+  kubernetes.core.k8s:
+    kubeconfig: "{{ argocd_bootstrap_kubeconfig }}"
+    namespace: "{{ argocd_bootstrap_namespace }}"
+    state: present
+    src: "{{ argocd_bootstrap_manifest_path }}"
+    server_side_apply:
+      field_manager: respawn-ansible
+      force_conflicts: true
+
+- name: Wait for the ArgoCD server to be available
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ argocd_bootstrap_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-server
+    namespace: "{{ argocd_bootstrap_namespace }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 600
+
+- name: Apply the root app-of-apps
+  kubernetes.core.k8s:
+    kubeconfig: "{{ argocd_bootstrap_kubeconfig }}"
+    state: present
+    definition: "{{ lookup('ansible.builtin.template', 'root-app.yaml.j2') | from_yaml }}"
+  when: argocd_bootstrap_apply_root_app | bool

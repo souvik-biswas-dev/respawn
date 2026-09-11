@@ -1,0 +1,18 @@
+---
+# Pinned on purpose. Check the tag exists at https://github.com/argoproj/argo-cd/releases
+argocd_bootstrap_version: "v2.13.2"
+argocd_bootstrap_manifest_url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_bootstrap_version }}/manifests/install.yaml"
+argocd_bootstrap_namespace: argocd
+argocd_bootstrap_manifest_path: "/opt/respawn/argocd-install-{{ argocd_bootstrap_version }}.yaml"
+
+# The k3s kubeconfig on the server (root only, which is why this play uses become).
+argocd_bootstrap_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+# Git repo ArgoCD watches. Must be set (inventory var). A public https URL needs no credentials;
+# private repos need a repository Secret, which belongs with the SOPS work in step 4.
+argocd_bootstrap_repo_url: ""
+argocd_bootstrap_repo_revision: HEAD
+argocd_bootstrap_root_path: gitops/apps
+
+# Set false to install ArgoCD only, e.g. before the gitops/ folder exists in your repo.
+argocd_bootstrap_apply_root_app: true

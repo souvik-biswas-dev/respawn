@@ -1,0 +1,90 @@
+---
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write k3s config
+  # Must exist before the installer runs so the first start already has the right settings.
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart k3s
+
+- name: Check for an existing k3s binary
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Read installed k3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_installed_version
+  changed_when: false
+  when: k3s_binary.stat.exists
+
+- name: Decide whether k3s needs installing or upgrading
+  ansible.builtin.set_fact:
+    k3s_needs_install: >-
+      {{ not k3s_binary.stat.exists
+         or k3s_version not in (k3s_installed_version.stdout | default('')) }}
+
+- name: Download the k3s installer script
+  # No module installs k3s, and upstream publishes no checksum for the script, so
+  # the version is pinned through INSTALL_K3S_VERSION instead.
+  ansible.builtin.get_url:
+    url: "{{ k3s_installer_url }}"
+    dest: "{{ k3s_installer_path }}"
+    owner: root
+    group: root
+    mode: "0700"
+  when: k3s_needs_install | bool
+
+- name: Run the k3s installer at the pinned version
+  ansible.builtin.command: "{{ k3s_installer_path }}"
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  changed_when: true
+  when: k3s_needs_install | bool
+
+- name: Make sure k3s is running and starts at boot
+  ansible.builtin.service:
+    name: k3s
+    state: started
+    enabled: true
+
+- name: Wait until the node reports Ready
+  ansible.builtin.command: /usr/local/bin/k3s kubectl get nodes --no-headers
+  register: k3s_nodes
+  until: k3s_nodes.rc == 0 and ' Ready' in k3s_nodes.stdout
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Create local directory for the kubeconfig
+  ansible.builtin.file:
+    path: "{{ k3s_kubeconfig_local_path | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+- name: Fetch kubeconfig to this machine
+  ansible.builtin.fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ k3s_kubeconfig_local_path }}"
+    flat: true
+
+- name: Point the fetched kubeconfig at the public address
+  ansible.builtin.replace:
+    path: "{{ k3s_kubeconfig_local_path }}"
+    regexp: 'https://127\.0\.0\.1:6443'
+    replace: "https://{{ k3s_public_address }}:6443"
+    mode: "0600"
+  delegate_to: localhost
+  become: false

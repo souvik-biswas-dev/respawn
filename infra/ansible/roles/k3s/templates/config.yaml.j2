@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+write-kubeconfig-mode: "0600"
+secrets-encryption: {{ k3s_secrets_encryption | lower }}
+tls-san:
+  - {{ k3s_public_address }}
+{% for san in k3s_extra_tls_sans %}
+  - {{ san }}
+{% endfor %}
