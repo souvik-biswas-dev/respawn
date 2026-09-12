@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  author: respawn
+  description: Install ArgoCD from a pinned manifest and apply the root app-of-apps.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+  galaxy_tags: []
+dependencies: []

@@ -1,0 +1,28 @@
+---
+# User that must keep SSH access. The role refuses to disable passwords if this
+# user has no authorized key, so a typo cannot lock you out.
+hardening_ssh_allowed_users:
+  - "{{ ansible_user | default('ops') }}"
+hardening_ssh_max_auth_tries: 3
+
+# Ports opened in ufw. 6443 is limited at the cloud firewall (Terraform) to admin IPs;
+# ufw is the second layer, so it stays open here rather than duplicating the CIDR list.
+hardening_ufw_allowed_tcp_ports: [80, 443, 6443]
+# k3s default pod and service networks. Pods must reach the host (e.g. the API) through ufw.
+hardening_ufw_k3s_cidrs: ["10.42.0.0/16", "10.43.0.0/16"]
+
+hardening_fail2ban_bantime: 1h
+hardening_fail2ban_findtime: 10m
+hardening_fail2ban_maxretry: 5
+hardening_fail2ban_ignoreip: ["127.0.0.1/8", "::1"]
+
+# Automatic reboots are off: a surprise reboot is downtime. Kernel updates apply at next reboot.
+hardening_unattended_reboot: false
+
+hardening_packages:
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - auditd
+  - chrony
+  - python3-apt

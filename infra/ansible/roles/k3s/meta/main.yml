@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  author: respawn
+  description: Single-node k3s install pinned to a version, with kubeconfig fetched locally.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+  galaxy_tags: []
+dependencies: []

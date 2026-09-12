@@ -1,0 +1,22 @@
+# {{ ansible_managed }}
+# The one app applied by hand. Everything else is created by ArgoCD from Git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: {{ argocd_bootstrap_namespace }}
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ argocd_bootstrap_repo_url }}
+    targetRevision: {{ argocd_bootstrap_repo_revision }}
+    path: {{ argocd_bootstrap_root_path }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ argocd_bootstrap_namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

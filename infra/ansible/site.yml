@@ -1,0 +1,21 @@
+---
+- name: Respawn - harden the server, install k3s, bootstrap ArgoCD
+  hosts: respawn
+  become: true
+  pre_tasks:
+    - name: Refuse to touch a protected host without explicit confirmation
+      ansible.builtin.assert:
+        that:
+          - not (respawn_protected | default(false) | bool) or (confirm_protected | default('no')) == 'yes'
+        fail_msg: >-
+          {{ inventory_hostname }} is marked respawn_protected. Re-run with -e confirm_protected=yes
+          if you are sure.
+        quiet: true
+      tags: [always]
+  roles:
+    - role: hardening
+      tags: [hardening]
+    - role: k3s
+      tags: [k3s]
+    - role: argocd_bootstrap
+      tags: [argocd]

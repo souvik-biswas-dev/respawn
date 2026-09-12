@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+X11Forwarding no
+MaxAuthTries {{ hardening_ssh_max_auth_tries }}
+AllowUsers {{ hardening_ssh_allowed_users | join(' ') }}

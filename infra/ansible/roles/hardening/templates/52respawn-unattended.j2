@@ -1,0 +1,3 @@
+// {{ ansible_managed }}
+Unattended-Upgrade::Automatic-Reboot "{{ 'true' if hardening_unattended_reboot else 'false' }}";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
