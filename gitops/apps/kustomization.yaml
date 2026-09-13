@@ -1,0 +1,7 @@
+# Root app watches this folder. Each child app is one Application manifest listed here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - canary-app.yaml
+  - monitoring-apps.yaml
+  - backupvouch-apps.yaml
