@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: canary
+resources:
+  - namespace.yaml
+  - postgres-service.yaml
+  - postgres-statefulset.yaml
+  - writer-service.yaml
+  - writer-deployment.yaml
+
+# Image built from ./writer and pushed to GitHub Container Registry (CI in step 9;
+# by hand until then, see writer/Dockerfile). Change the name and tag here only.
+images:
+  - name: respawn-canary
+    newName: ghcr.io/your-user/respawn-canary
+    newTag: 0.1.0
+
+# Disk size for Postgres. Edit pvc-size.patch.yaml. Kubernetes cannot resize a
+# StatefulSet's volumeClaimTemplates in place, so decide before the first deploy
+# (or delete the StatefulSet and PVC, and restore data from backup).
+patches:
+  - path: pvc-size.patch.yaml
+    target:
+      kind: StatefulSet
+      name: canary-postgres

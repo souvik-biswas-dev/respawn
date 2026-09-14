@@ -1,0 +1,16 @@
+# Headless: gives the StatefulSet a stable DNS name (canary-postgres.canary.svc).
+apiVersion: v1
+kind: Service
+metadata:
+  name: canary-postgres
+  labels:
+    app.kubernetes.io/name: canary-postgres
+    app.kubernetes.io/part-of: respawn
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: canary-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
