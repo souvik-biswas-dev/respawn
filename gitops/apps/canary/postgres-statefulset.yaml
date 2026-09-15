@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: canary-postgres
+  labels:
+    app.kubernetes.io/name: canary-postgres
+    app.kubernetes.io/part-of: respawn
+spec:
+  serviceName: canary-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: canary-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: canary-postgres
+        app.kubernetes.io/part-of: respawn
+    spec:
+      securityContext:
+        runAsUser: 70 # the postgres user in the alpine image
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:16.6-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: canary
+            - name: POSTGRES_USER
+              value: canary
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: canary-postgres # provided by step 4 (SOPS); see secret.example.yaml
+                  key: POSTGRES_PASSWORD
+            # A subdirectory, because a fresh volume root contains lost+found and initdb refuses that.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "canary", "-d", "canary"]
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "canary", "-d", "canary"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # k3s ships the local-path provisioner as its default StorageClass.
+        resources:
+          requests:
+            storage: 2Gi # overridden by pvc-size.patch.yaml

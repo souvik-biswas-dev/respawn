@@ -1,0 +1,23 @@
+# The one Application applied by hand (the Ansible role argocd_bootstrap applies an
+# equivalent one from its template). Everything else is created by ArgoCD from Git.
+# Replace repoURL with your own repository before using this file directly.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR-USER/respawn.git
+    targetRevision: HEAD
+    path: gitops/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

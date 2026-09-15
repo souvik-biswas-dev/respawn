@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: canary-writer
+  labels:
+    app.kubernetes.io/name: canary-writer
+    app.kubernetes.io/part-of: respawn
+spec:
+  replicas: 1
+  # Recreate, never two writers at once: overlapping writers would fight over sequence numbers.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: canary-writer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: canary-writer
+        app.kubernetes.io/part-of: respawn
+      annotations:
+        # Informational only: scraping is configured by the ServiceMonitor in gitops/apps/monitoring.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: writer
+          image: respawn-canary # real name and tag set in kustomization.yaml
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PGHOST
+              value: canary-postgres
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: canary
+            - name: PGUSER
+              value: canary
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: canary-postgres # same Secret as the database
+                  key: POSTGRES_PASSWORD
+          # Readiness = "writes are succeeding". Liveness is deliberately separate and
+          # only checks the process: if the database is down, restarting this pod would not help.
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
