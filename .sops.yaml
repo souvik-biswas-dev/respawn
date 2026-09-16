@@ -1,0 +1,7 @@
+# Only values are encrypted (not keys or metadata) so Git diffs stay readable.
+# The recipient below is a THROWAWAY DEMO key. Before real use: age-keygen, put the
+# new public key here, then re-encrypt (see docs/RUNBOOK.md section 0).
+creation_rules:
+  - path_regex: gitops/secrets/.*\.enc\.yaml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1td432rtgeg77c096p5n4hgw2n4kr79cnnkv4588z2q5sdg6hnawsgpx00l
