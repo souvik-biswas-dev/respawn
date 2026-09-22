@@ -1,0 +1,130 @@
+# Sized for ONE small node (2 vCPU / 4 GB is plenty). Everything not set here is the chart default.
+fullnameOverride: kps
+
+prometheus:
+  prometheusSpec:
+    # Pick up our PrometheusRule / ServiceMonitor objects without chart-specific labels.
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    retention: 7d
+    retentionSize: 4GB
+    resources:
+      requests: {cpu: 100m, memory: 400Mi}
+      limits: {memory: 1Gi}
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 6Gi # k3s local-path; cannot be resized in place later
+
+alertmanager:
+  alertmanagerSpec:
+    # Mounted at /etc/alertmanager/secrets/alertmanager-webhook/. The Secret comes from
+    # gitops/secrets/ (see alertmanager-webhook.example.yaml), so the URL is never in Git.
+    secrets:
+      - alertmanager-webhook
+    resources:
+      requests: {cpu: 10m, memory: 32Mi}
+      limits: {memory: 128Mi}
+  config:
+    route:
+      receiver: webhook
+      group_by: [alertname, instance]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        # Watchdog always fires on purpose; it is only useful to an external dead-man's switch.
+        - receiver: "null"
+          matchers:
+            - alertname = "Watchdog"
+    receivers:
+      - name: "null"
+      - name: webhook
+        webhook_configs:
+          - url_file: /etc/alertmanager/secrets/alertmanager-webhook/url
+            send_resolved: true
+
+grafana:
+  admin:
+    existingSecret: grafana-admin # keys admin-user, admin-password; see gitops/secrets/grafana-admin.example.yaml
+    userKey: admin-user
+    passwordKey: admin-password
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 384Mi}
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: monitoring
+  # Loki is a second data source next to the default Prometheus one (uid "prometheus").
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+  # The chart's stock dashboards are useful but noisy; ours are in gitops/apps/monitoring/dashboards.
+  defaultDashboardsEnabled: false
+
+# The stock alert rules are disabled on purpose: the seven alerts that matter here are our own,
+# named in docs/ARCHITECTURE.md and unit-tested in alerts/tests. Watchdog stays (see above).
+defaultRules:
+  create: true
+  rules:
+    alertmanager: false
+    etcd: false
+    configReloaders: false
+    general: true
+    k8sContainerCpuUsageSecondsTotal: false
+    k8sContainerMemoryCache: false
+    k8sContainerMemoryRss: false
+    k8sContainerMemorySwap: false
+    k8sContainerResource: false
+    k8sContainerMemoryWorkingSetBytes: false
+    k8sPodOwner: false
+    kubeApiserverAvailability: false
+    kubeApiserverBurnrate: false
+    kubeApiserverHistogram: false
+    kubeApiserverSlos: false
+    kubeControllerManager: false
+    kubelet: false
+    kubeProxy: false
+    kubePrometheusGeneral: false
+    kubePrometheusNodeRecording: false
+    kubernetesApps: false
+    kubernetesResources: false
+    kubernetesStorage: false
+    kubernetesSystem: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeStateMetrics: false
+    network: false
+    node: false
+    nodeExporterAlerting: false
+    nodeExporterRecording: false
+    prometheus: false
+    prometheusOperator: false
+
+# k3s runs these inside one process and does not expose them on the usual ports;
+# scraping them would only create permanently-down targets.
+kubeControllerManager: {enabled: false}
+kubeScheduler: {enabled: false}
+kubeProxy: {enabled: false}
+kubeEtcd: {enabled: false}
+
+kube-state-metrics:
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 128Mi}
+
+prometheus-node-exporter:
+  resources:
+    requests: {cpu: 10m, memory: 24Mi}
+    limits: {memory: 64Mi}

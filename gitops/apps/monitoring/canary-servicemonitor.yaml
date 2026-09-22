@@ -1,0 +1,19 @@
+# Tells Prometheus to scrape the canary writer (the Service in the canary namespace, port "http").
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: canary-writer
+  labels:
+    app.kubernetes.io/part-of: respawn
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  namespaceSelector:
+    matchNames: [canary]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: canary-writer
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 5s # the writer ticks every second; 5s keeps gaps visible without a heavy scrape load

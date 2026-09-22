@@ -1,0 +1,9 @@
+# Ships container logs from the node to Loki. NOTE: Grafana has deprecated Promtail in favour of
+# Grafana Alloy (see docs/PROGRESS.md). Kept here because docs/PLAN.md names it; swapping the
+# agent later only touches this file and monitoring-apps.yaml.
+config:
+  clients:
+    - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+resources:
+  requests: {cpu: 20m, memory: 48Mi}
+  limits: {memory: 128Mi}
