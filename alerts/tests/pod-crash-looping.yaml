@@ -1,0 +1,36 @@
+rule_files:
+  - ../rules.yaml
+evaluation_interval: 1m
+
+tests:
+  # One restart per minute for 30 minutes.
+  - name: restarting-pod-fires
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="canary",pod="canary-writer-abc",container="writer"}'
+        values: "0+1x30"
+    alert_rule_test:
+      - eval_time: 3m # increase is high, but the 5m "for" has not elapsed
+        alertname: PodCrashLooping
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: PodCrashLooping
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: canary
+              pod: canary-writer-abc
+              container: writer
+            exp_annotations:
+              summary: "canary/canary-writer-abc (writer) keeps restarting"
+              description: "More than 3 restarts in 15 minutes. Run: kubectl -n canary logs canary-writer-abc --previous"
+  # Five restarts in the past, none since: increase over 15m is 0.
+  - name: stable-pod-does-not-fire
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{namespace="canary",pod="canary-writer-abc",container="writer"}'
+        values: "5+0x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: PodCrashLooping
+        exp_alerts: []

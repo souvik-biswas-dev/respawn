@@ -1,0 +1,36 @@
+rule_files:
+  - ../rules.yaml
+evaluation_interval: 1m
+
+tests:
+  - name: exporter-goes-down-fires
+    interval: 1m
+    input_series:
+      - series: 'up{job="node-exporter",instance="node1:9100"}'
+        values: "1x10 0x20"
+    alert_rule_test:
+      - eval_time: 10m # still up
+        alertname: NodeDown
+        exp_alerts: []
+      - eval_time: 12m # down for ~1m, inside the 2m "for"
+        alertname: NodeDown
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: NodeDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: node-exporter
+              instance: "node1:9100"
+            exp_annotations:
+              summary: "node-exporter on node1:9100 is not answering"
+              description: "The node, its network, or the exporter is down."
+  - name: healthy-does-not-fire
+    interval: 1m
+    input_series:
+      - series: 'up{job="node-exporter",instance="node1:9100"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: NodeDown
+        exp_alerts: []

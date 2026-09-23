@@ -1,0 +1,53 @@
+rule_files:
+  - ../rules.yaml
+evaluation_interval: 1m
+
+tests:
+  # Free space shrinks 0.2 GB every 5 min from 35% free: gone within a day, so it must fire.
+  - name: leak-fires
+    interval: 5m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "35000000000-200000000x100"
+      - series: 'node_filesystem_size_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "100000000000+0x100"
+    alert_rule_test:
+      - eval_time: 10m # before the 30m "for" has elapsed
+        alertname: DiskFillingSoon
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: DiskFillingSoon
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: node1
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda1
+            exp_annotations:
+              summary: "Disk / on node1 will be full within 24h"
+              description: "At the current rate of the last 6h, free space reaches zero in under a day. See docs/RUNBOOK.md section 4."
+  # Same 35% free but flat: no slope, no alert.
+  - name: flat-does-not-fire
+    interval: 5m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "35000000000+0x100"
+      - series: 'node_filesystem_size_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "100000000000+0x100"
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: DiskFillingSoon
+        exp_alerts: []
+  # Steep slope but 90% free: the <40% guard keeps it quiet.
+  - name: nearly-empty-disk-does-not-fire
+    interval: 5m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "90000000000-200000000x100"
+      - series: 'node_filesystem_size_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "100000000000+0x100"
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: DiskFillingSoon
+        exp_alerts: []

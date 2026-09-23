@@ -1,0 +1,57 @@
+rule_files:
+  - ../rules.yaml
+evaluation_interval: 1m
+
+tests:
+  # Healthy: sequence +1 per minute, last-write timestamp equals the clock (value in seconds = 60 * minutes).
+  - name: healthy-writer-does-not-fire
+    interval: 1m
+    input_series:
+      - series: 'canary_last_seq{job="canary-writer",instance="10.0.0.5:8080"}'
+        values: "0+1x30"
+      - series: 'canary_last_write_timestamp_seconds{job="canary-writer",instance="10.0.0.5:8080"}'
+        values: "0+60x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: CanaryWriteGap
+        exp_alerts: []
+  # Writes stop at minute 10: sequence flat, timestamp frozen. Both branches agree on one alert.
+  - name: stalled-writer-fires
+    interval: 1m
+    input_series:
+      - series: 'canary_last_seq{job="canary-writer",instance="10.0.0.5:8080"}'
+        values: "0+1x10 10x20"
+      - series: 'canary_last_write_timestamp_seconds{job="canary-writer",instance="10.0.0.5:8080"}'
+        values: "0+60x10 600x20"
+    alert_rule_test:
+      - eval_time: 10m # still writing
+        alertname: CanaryWriteGap
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: CanaryWriteGap
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: canary-writer
+              instance: "10.0.0.5:8080"
+            exp_annotations:
+              summary: "The canary writer has stopped writing to Postgres"
+              description: "Every missing second here is data the drills count as lost (RPO). See docs/DRILLS.md."
+  # The writer pod is gone, so its series do not exist: the absent() branch fires.
+  - name: missing-series-fires
+    interval: 1m
+    input_series:
+      - series: 'up{job="something-else"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: CanaryWriteGap
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: CanaryWriteGap
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "The canary writer has stopped writing to Postgres"
+              description: "Every missing second here is data the drills count as lost (RPO). See docs/DRILLS.md."
