@@ -1,0 +1,39 @@
+rule_files:
+  - ../rules.yaml
+evaluation_interval: 1m
+
+tests:
+  - name: five-percent-free-fires
+    interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "5000000000+0x30"
+      - series: 'node_filesystem_size_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "100000000000+0x30"
+    alert_rule_test:
+      - eval_time: 3m # inside the 5m "for"
+        alertname: DiskCritical
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: DiskCritical
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              instance: node1
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda1
+            exp_annotations:
+              summary: "Disk / on node1 has under 10% free"
+              description: "Postgres stops accepting writes when its volume is full. See docs/RUNBOOK.md section 4."
+  - name: half-free-does-not-fire
+    interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "50000000000+0x30"
+      - series: 'node_filesystem_size_bytes{instance="node1",mountpoint="/",fstype="ext4",device="/dev/sda1"}'
+        values: "100000000000+0x30"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DiskCritical
+        exp_alerts: []

@@ -1,0 +1,20 @@
+rule_files:
+  - ../rules.yaml
+evaluation_interval: 1m
+
+tests:
+  # Two operator pods over time would show up as two series with different pod labels; the recorded
+  # series must collapse them to one per policy and keep the larger (newer) timestamp.
+  - name: verified-timestamp-becomes-backup-success
+    interval: 1m
+    input_series:
+      - series: 'backupvouch_last_verified_timestamp_seconds{namespace="canary",policy="canary-db",pod="op-aaa"}'
+        values: "1700000000x10"
+      - series: 'backupvouch_last_verified_timestamp_seconds{namespace="canary",policy="canary-db",pod="op-bbb"}'
+        values: "1700003600x10"
+    promql_expr_test:
+      - expr: backup_last_success_timestamp_seconds
+        eval_time: 5m
+        exp_samples:
+          - labels: 'backup_last_success_timestamp_seconds{namespace="canary",policy="canary-db"}'
+            value: 1700003600

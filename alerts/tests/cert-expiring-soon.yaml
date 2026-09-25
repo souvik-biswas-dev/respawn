@@ -1,0 +1,33 @@
+rule_files:
+  - ../rules.yaml
+evaluation_interval: 1m
+
+tests:
+  # The metric is the expiry as a unix timestamp. Test time starts at 0, so 10*86400 = expires in 10 days.
+  - name: ten-days-left-fires
+    interval: 1m
+    input_series:
+      - series: 'probe_ssl_earliest_cert_expiry{instance="https://example.org"}'
+        values: "864000+0x180"
+    alert_rule_test:
+      - eval_time: 30m # inside the 1h "for"
+        alertname: CertExpiringSoon
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: CertExpiringSoon
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: "https://example.org"
+            exp_annotations:
+              summary: "Certificate for https://example.org expires in under 14 days"
+              description: "Remaining: 9d 22h 0m 0s."
+  - name: sixty-days-left-does-not-fire
+    interval: 1m
+    input_series:
+      - series: 'probe_ssl_earliest_cert_expiry{instance="https://example.org"}'
+        values: "5184000+0x180"
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: CertExpiringSoon
+        exp_alerts: []

@@ -1,0 +1,53 @@
+rule_files:
+  - ../rules.yaml
+evaluation_interval: 1m
+
+tests:
+  # Last success at t=0 and nothing since: stale once 90m have passed (plus the 10m "for").
+  - name: old-backup-fires
+    interval: 1m
+    input_series:
+      - series: 'backup_last_success_timestamp_seconds{namespace="canary",policy="canary-db"}'
+        values: "0x1700"
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: BackupStale
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: BackupStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: canary
+              policy: canary-db
+            exp_annotations:
+              summary: "No restore-verified backup in the last 90 minutes (or no backup metric at all)"
+              description: "See docs/RUNBOOK.md section 5."
+  # Last success at t=3600s; at 2h that is 1h old, inside the 90m limit.
+  - name: fresh-backup-does-not-fire
+    interval: 1m
+    input_series:
+      - series: 'backup_last_success_timestamp_seconds{namespace="canary",policy="canary-db"}'
+        values: "3600x1700"
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: BackupStale
+        exp_alerts: []
+  # No backup metric at all (exporter missing): the absent() branch fires after 10m.
+  - name: missing-metric-fires
+    interval: 1m
+    input_series:
+      - series: 'up{job="something-else"}'
+        values: "1x30"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: BackupStale
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: BackupStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "No restore-verified backup in the last 90 minutes (or no backup metric at all)"
+              description: "See docs/RUNBOOK.md section 5."

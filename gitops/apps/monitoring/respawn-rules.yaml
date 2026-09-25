@@ -1,0 +1,126 @@
+# The seven alerts named in docs/ARCHITECTURE.md. This file is the single source of truth:
+# scripts/check-alerts.sh extracts spec.groups from it and runs promtool check + test (alerts/tests).
+# Change an expression here, then change its test, then run `make lint-alerts`.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: respawn-alerts
+  labels:
+    app.kubernetes.io/part-of: respawn
+  annotations:
+    # The CRD arrives with monitoring-stack; do not fail the dry run before it exists.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  groups:
+    - name: respawn.disk
+      rules:
+        - alert: DiskFillingSoon
+          # predict_linear over 6h catches a steady leak; the <40% guard stops a nearly empty
+          # disk with a noisy slope from paging anyone.
+          expr: |
+            (
+              node_filesystem_avail_bytes{fstype=~"ext4|xfs|btrfs"}
+                / node_filesystem_size_bytes{fstype=~"ext4|xfs|btrfs"} < 0.4
+            )
+            and
+            (
+              predict_linear(node_filesystem_avail_bytes{fstype=~"ext4|xfs|btrfs"}[6h], 24 * 3600) < 0
+            )
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Disk {{ $labels.mountpoint }} on {{ $labels.instance }} will be full within 24h"
+            description: "At the current rate of the last 6h, free space reaches zero in under a day. See docs/RUNBOOK.md section 4."
+        - alert: DiskCritical
+          expr: |
+            node_filesystem_avail_bytes{fstype=~"ext4|xfs|btrfs"}
+              / node_filesystem_size_bytes{fstype=~"ext4|xfs|btrfs"} < 0.10
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Disk {{ $labels.mountpoint }} on {{ $labels.instance }} has under 10% free"
+            description: "Postgres stops accepting writes when its volume is full. See docs/RUNBOOK.md section 4."
+
+    - name: respawn.certs
+      rules:
+        - alert: CertExpiringSoon
+          # Needs a blackbox probe of the public HTTPS endpoint (see probe.example.yaml): there is
+          # no cert-manager in this repo, so this metric only exists once that probe is configured.
+          expr: (probe_ssl_earliest_cert_expiry - time()) < 14 * 86400
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate for {{ $labels.instance }} expires in under 14 days"
+            description: "Remaining: {{ $value | humanizeDuration }}."
+
+    - name: respawn.backups-mapping
+      rules:
+        # BackupVouch's metric names are its own (docs/MONITORING.md in that repo). The alert, the
+        # dashboard and the drills use one stable name, so a change of backup tool touches only this rule.
+        # "Success" here means the strongest thing BackupVouch reports: the time the last backup was
+        # RESTORED and passed its checks, not merely taken. A backup that cannot be restored is not a success.
+        # max by (...) keeps one series per policy across operator restarts (pod and instance labels change).
+        - record: backup_last_success_timestamp_seconds
+          expr: max by (namespace, policy) (backupvouch_last_verified_timestamp_seconds)
+
+    - name: respawn.backups
+      rules:
+        - alert: BackupStale
+          # 5400s = 1.5 x the hourly schedule in canary-backuppolicy.yaml (BackupVouch's own advice).
+          # If the schedule changes, change this. A failing restore check also lands here: the verified
+          # timestamp stops moving, so the age grows. The absent() branch makes "no metric at all" an
+          # alert too: it fires while the operator is down or has never verified a backup (a rebuilt
+          # cluster stays suspended until `make restore-data`), which is correct.
+          expr: |
+            (time() - backup_last_success_timestamp_seconds > 5400)
+            or
+            absent(backup_last_success_timestamp_seconds)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No restore-verified backup in the last 90 minutes (or no backup metric at all)"
+            description: "See docs/RUNBOOK.md section 5."
+
+    - name: respawn.cluster
+      rules:
+        - alert: NodeDown
+          # Single node: if the node dies, Prometheus dies with it and this cannot fire. It still
+          # catches a dead node_exporter or a scrape problem. For a real node loss, point an
+          # external dead-man's switch at the Watchdog alert (see docs/PROGRESS.md).
+          expr: up{job="node-exporter"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "node-exporter on {{ $labels.instance }} is not answering"
+            description: "The node, its network, or the exporter is down."
+        - alert: PodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total[15m]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) keeps restarting"
+            description: "More than 3 restarts in 15 minutes. Run: kubectl -n {{ $labels.namespace }} logs {{ $labels.pod }} --previous"
+
+    - name: respawn.canary
+      rules:
+        - alert: CanaryWriteGap
+          # Three ways to be silent: the sequence stopped rising, the last successful write is
+          # more than 30s old, or the series is gone altogether (pod down).
+          expr: |
+            (increase(canary_last_seq[2m]) == 0)
+            or
+            (time() - canary_last_write_timestamp_seconds > 30)
+            or
+            absent(canary_last_seq)
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The canary writer has stopped writing to Postgres"
+            description: "Every missing second here is data the drills count as lost (RPO). See docs/DRILLS.md."

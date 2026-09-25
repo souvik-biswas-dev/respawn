@@ -1,0 +1,18 @@
+# EXAMPLE, not in kustomization.yaml. CertExpiringSoon needs probe_ssl_earliest_cert_expiry, which
+# comes from a blackbox exporter probing your public HTTPS endpoint. When a domain exists:
+#   1. enable the chart's prometheus-blackbox-exporter (or deploy one) in values/kube-prometheus-stack.yaml
+#   2. copy this file next to kustomization.yaml, set the URL, and list it under resources
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: public-https
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  module: http_2xx
+  prober:
+    url: kps-prometheus-blackbox-exporter.monitoring.svc:9115 # adjust to your exporter's Service
+  targets:
+    staticConfig:
+      static:
+        - https://example.org # replace with your domain

@@ -1,0 +1,21 @@
+# Our own monitoring objects. The Helm charts are in ../monitoring-apps.yaml; values are in ./values
+# (not listed here, so Kustomize ignores that folder).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+resources:
+  - respawn-rules.yaml
+  - canary-servicemonitor.yaml
+configMapGenerator:
+  - name: respawn-dashboard-disk
+    files: [dashboards/disk.json]
+  - name: respawn-dashboard-backups
+    files: [dashboards/backups.json]
+  - name: respawn-dashboard-canary
+    files: [dashboards/canary.json]
+  - name: respawn-dashboard-alerts
+    files: [dashboards/alerts.json]
+generatorOptions:
+  disableNameSuffixHash: true # the Grafana sidecar finds them by label, not name
+  labels:
+    grafana_dashboard: "1"
