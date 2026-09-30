@@ -1,0 +1,53 @@
+# Backs up the canary Postgres and PROVES each backup by restoring it into a scratch Postgres and
+# running the checks below. Field names are from BackupVouch docs/API.md (v1alpha1).
+apiVersion: backup.backupvouch.pages.dev/v1alpha1
+kind: BackupPolicy
+metadata:
+  name: canary-db
+  namespace: canary
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  # Hourly means worst-case RPO is about one hour plus the backup duration. Change it here,
+  # and change the BackupStale threshold (respawn-rules.yaml, ~1.5x the interval) with it.
+  schedule: "0 * * * *"
+  timeZone: UTC
+  # COMMITTED SUSPENDED ON PURPOSE. On a rebuilt server the canary database starts empty; an
+  # un-suspended policy would back that emptiness up and, after keepLast runs, prune the good
+  # backups. `make restore-data` (or `make resume-backups` on a first install) sets this to false.
+  suspend: true
+  source:
+    engine: postgres
+    host: canary-postgres.canary.svc
+    port: 5432
+    database: canary
+    credentialsSecretRef:
+      name: canary-backup-pg # keys: username, password (see gitops/secrets/canary-backup-pg.example.yaml)
+  storage:
+    # PLACEHOLDER. Must be OFF this server, or delete-server destroys the backups with it.
+    # Any S3-compatible service works; host:port, no scheme.
+    endpoint: s3.example.invalid:443
+    bucket: respawn-backups
+    prefix: canary/
+    useTLS: true
+    credentialsSecretRef:
+      name: backupvouch-s3 # keys: accessKey, secretKey (see gitops/secrets/backupvouch-s3.example.yaml)
+  retention:
+    keepLast: 48 # two days of hourly backups; the newest verified one is never pruned
+  backupTimeoutSeconds: 600
+  verify:
+    enabled: true
+    timeoutSeconds: 600
+    scratchSize: 1Gi
+    checks:
+      - name: canary-not-empty
+        sql: "SELECT count(*) > 0 FROM canary"
+        expect: "true"
+      # The writer's invariant from step 3: seq starts at 1 and never skips, so count equals max.
+      # A restore that lost the middle of the table fails here.
+      - name: canary-no-gaps
+        sql: "SELECT count(*) = max(seq) FROM canary"
+        expect: "true"
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 768Mi} # scratch Postgres runs inside the verify Job; sizing is a guess, adjust after the first run

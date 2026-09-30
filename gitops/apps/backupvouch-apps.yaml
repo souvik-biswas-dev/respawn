@@ -1,0 +1,57 @@
+# BackupVouch (github.com/souvik-biswas-dev/backupvouch) as the backup layer. Two Applications,
+# so the operator's CRD exists before anything uses it. Replace YOUR-USER as in canary-app.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backupvouch-operator
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR-USER/respawn.git
+    targetRevision: HEAD
+    path: gitops/apps/backupvouch/operator
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: backupvouch-system # the install manifest creates it and names it in every object
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # The BackupPolicy CRD is large; client-side apply can exceed the annotation size limit.
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backupvouch-config
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/YOUR-USER/respawn.git
+    targetRevision: HEAD
+    path: gitops/apps/backupvouch/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: canary
+  # `make restore-data` / `make resume-backups` flip spec.suspend by hand. Without this,
+  # selfHeal would flip it straight back to the committed value (true) and a rebuild could never resume.
+  ignoreDifferences:
+    - group: backup.backupvouch.pages.dev
+      kind: BackupPolicy
+      jsonPointers:
+        - /spec/suspend
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 5m

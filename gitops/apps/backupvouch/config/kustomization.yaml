@@ -1,0 +1,8 @@
+# Our objects around BackupVouch. No `namespace:` transformer on purpose: each file names its own
+# namespace, because the ClusterRoleBinding and the ServiceMonitor must not move into "canary".
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - canary-backuppolicy.yaml
+  - servicemonitor.yaml
+  - metrics-reader-binding.yaml
