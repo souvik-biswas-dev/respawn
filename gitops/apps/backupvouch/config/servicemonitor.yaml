@@ -1,0 +1,29 @@
+# Scrapes the operator's metrics endpoint (HTTPS 8443, Kubernetes-authenticated). Prometheus
+# sends its own service-account token; metrics-reader-binding.yaml grants it the right.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backupvouch-operator
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: respawn
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  namespaceSelector:
+    matchNames: [backupvouch-system]
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+      app.kubernetes.io/name: backupvouch
+  endpoints:
+    - port: https
+      path: /metrics
+      scheme: https
+      interval: 30s
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        # The operator serves a self-signed certificate unless cert-manager is set up, so the
+        # chain cannot be verified. The token still authenticates Prometheus to the operator.
+        # Cost: a man in the middle inside the cluster could read four gauges. Accepted here.
+        insecureSkipVerify: true

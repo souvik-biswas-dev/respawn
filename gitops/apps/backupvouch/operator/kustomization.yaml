@@ -1,0 +1,13 @@
+# The operator, installed from BackupVouch's own release manifest (docs/INSTALL.md in that repo):
+# namespace backupvouch-system, CRD, RBAC, metrics Service, Deployment. Images are
+# ghcr.io/souvik-biswas-dev/backupvouch{,-runner}:v0.1.0.
+#
+# UNVERIFIED: that release v0.1.0 exists with install.yaml attached (BackupVouch's own README still
+# says "no release published yet"), and that ArgoCD's kustomize can fetch this URL. Check with:
+#   curl -fsSLI https://github.com/souvik-biswas-dev/backupvouch/releases/download/v0.1.0/install.yaml
+# Hardening for rebuild reliability: download that file once, commit it here as install.yaml, and
+# list it below instead of the URL, so a rebuild never depends on GitHub being reachable.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/souvik-biswas-dev/backupvouch/releases/download/v0.1.0/install.yaml
