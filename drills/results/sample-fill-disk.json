@@ -1,0 +1,37 @@
+{
+  "drill": "fill-disk",
+  "mode": "simulated",
+  "label": "SIMULATED",
+  "started_at": "2026-10-25T15:04:35Z",
+  "fault_injected_at": "2026-10-25T15:04:40Z",
+  "recovered_at": "2026-10-25T15:10:35Z",
+  "rto_seconds": 355,
+  "last_seq_before": 391345,
+  "first_seq_after": 391700,
+  "rpo_seconds": 0,
+  "alerts_fired": [
+    "DiskCritical"
+  ],
+  "steps": [
+    {
+      "name": "allocate filler to 97%",
+      "seconds": 8
+    },
+    {
+      "name": "wait for DiskCritical alert",
+      "seconds": 333
+    },
+    {
+      "name": "remove filler",
+      "seconds": 3
+    },
+    {
+      "name": "canary sequence increasing",
+      "seconds": 11
+    }
+  ],
+  "notes": "SIMULATED: no disk was filled. Timings are random. alerts_fired is the EXPECTED set, not an observation.",
+  "environment": {
+    "provider": "simulated"
+  }
+}

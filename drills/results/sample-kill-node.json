@@ -1,0 +1,37 @@
+{
+  "drill": "kill-node",
+  "mode": "simulated",
+  "label": "SIMULATED",
+  "started_at": "2026-10-25T15:08:58Z",
+  "fault_injected_at": "2026-10-25T15:09:02Z",
+  "recovered_at": "2026-10-25T15:10:35Z",
+  "rto_seconds": 93,
+  "last_seq_before": 80348,
+  "first_seq_after": 80441,
+  "rpo_seconds": 0,
+  "alerts_fired": [
+    "PodCrashLooping"
+  ],
+  "steps": [
+    {
+      "name": "systemd restarts k3s",
+      "seconds": 18
+    },
+    {
+      "name": "k3s API answers",
+      "seconds": 33
+    },
+    {
+      "name": "ArgoCD apps Healthy/Synced",
+      "seconds": 30
+    },
+    {
+      "name": "canary sequence increasing",
+      "seconds": 12
+    }
+  ],
+  "notes": "SIMULATED: no server was touched. Timings are random. alerts_fired is the EXPECTED set from docs/DRILLS.md, not an observation.",
+  "environment": {
+    "provider": "simulated"
+  }
+}
