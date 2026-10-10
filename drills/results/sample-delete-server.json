@@ -1,0 +1,54 @@
+{
+  "drill": "delete-server",
+  "mode": "simulated",
+  "label": "SIMULATED",
+  "started_at": "2026-10-25T14:59:18Z",
+  "fault_injected_at": "2026-10-25T14:59:21Z",
+  "recovered_at": "2026-10-25T15:10:36Z",
+  "rto_seconds": 675,
+  "last_seq_before": 92801,
+  "first_seq_after": 90121,
+  "rpo_seconds": 2680,
+  "alerts_fired": [
+    "CanaryWriteGap",
+    "NodeDown"
+  ],
+  "steps": [
+    {
+      "name": "destroy server",
+      "seconds": 13
+    },
+    {
+      "name": "create server",
+      "seconds": 58
+    },
+    {
+      "name": "wait for ssh",
+      "seconds": 41
+    },
+    {
+      "name": "ansible bootstrap",
+      "seconds": 307
+    },
+    {
+      "name": "restore-key and apply-secrets",
+      "seconds": 13
+    },
+    {
+      "name": "wait for ArgoCD to create the canary",
+      "seconds": 212
+    },
+    {
+      "name": "restore-data",
+      "seconds": 17
+    },
+    {
+      "name": "canary sequence increasing",
+      "seconds": 14
+    }
+  ],
+  "notes": "SIMULATED: no server was destroyed. Timings and the RPO are random (RPO drawn inside the hourly-backup bound). alerts_fired is the EXPECTED set, not an observation.",
+  "environment": {
+    "provider": "simulated"
+  }
+}
