@@ -1,0 +1,10 @@
+# Gitleaks config: the default rules plus one narrow, explained exception.
+title = "respawn gitleaks"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Deliberate dummy so `terraform plan` works without a Cloudflare account (see the comment in main.tf). It never reaches the API."
+paths = ['''infra/terraform/envs/prod/main\.tf''']
+regexes = ['''dns-disabled-placeholder-token-0+''']

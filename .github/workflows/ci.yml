@@ -1,0 +1,127 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TOOLS_BIN: ${{ github.workspace }}/.ci-bin
+
+# Third-party actions are pinned to full commit SHAs (the tag is in the comment).
+# Downloaded tools are pinned by version and SHA-256 in scripts/install-ci-tools.sh.
+jobs:
+  terraform:
+    name: terraform fmt, validate, tflint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+      - name: terraform fmt -check, init -backend=false, validate
+        run: make validate
+      - uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
+        with:
+          tflint_version: v0.65.0
+      - name: tflint
+        run: make lint-terraform
+
+  ansible:
+    name: ansible-lint and syntax check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install ansible-core==2.21.5 ansible-lint==26.10.1 PyYAML==6.0.3
+      - run: make ansible-deps
+      - run: make lint-ansible
+
+  gitops:
+    name: kustomize + kubeconform
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: install pinned tools
+        run: |
+          bash scripts/install-ci-tools.sh kustomize kubeconform
+          echo "$TOOLS_BIN" >> "$GITHUB_PATH"
+      - run: make lint-gitops
+
+  alerts:
+    name: promtool check and test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install PyYAML==6.0.3
+      - name: install pinned tools
+        run: |
+          bash scripts/install-ci-tools.sh promtool
+          echo "$TOOLS_BIN" >> "$GITHUB_PATH"
+      - run: make lint-alerts
+
+  shell-and-drills:
+    name: shellcheck and drill-schema validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install jsonschema==4.26.0 PyYAML==6.0.3
+      - name: shellcheck every script
+        run: make lint-shell
+      - name: secret scripts, plaintext check
+        run: make lint-secrets
+      - name: "simulate every drill, then validate all results against the schemas"
+        run: |
+          make lint-drills
+          make drill-simulate
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # scan the whole history, not just the tip
+      - name: install pinned gitleaks
+        run: |
+          bash scripts/install-ci-tools.sh gitleaks
+          echo "$TOOLS_BIN" >> "$GITHUB_PATH"
+      - name: working tree and full history
+        run: |
+          gitleaks detect --no-git --source . --config .gitleaks.toml --redact --no-banner
+          gitleaks detect --source . --config .gitleaks.toml --redact --no-banner
+
+  site:
+    name: console build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: make site-build
+
+  docs:
+    name: doc links
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: make lint-docs
