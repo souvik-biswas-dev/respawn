@@ -12,7 +12,7 @@ resources:
 # by hand until then, see writer/Dockerfile). Change the name and tag here only.
 images:
   - name: respawn-canary
-    newName: ghcr.io/your-user/respawn-canary
+    newName: ghcr.io/souvik-biswas-dev/respawn-canary
     newTag: 0.1.0
 
 # Disk size for Postgres. Edit pvc-size.patch.yaml. Kubernetes cannot resize a

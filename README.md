@@ -90,7 +90,7 @@ Run `make help` for every target.
 - **Nothing has been measured.** The drills have not run against a real server or VM. Their real code paths were tested only against stand-in `kubectl`, `ssh`, `terraform` and similar commands, so several assumptions about a live cluster are unverified. They are listed in [docs/PROGRESS.md](docs/PROGRESS.md) under "Open issues".
 - **`fill-disk` fills to 97%, not 100%.** Postgres normally keeps writing, so its RTO is mostly the time until the `DiskCritical` alert fires. The result notes say so.
 - **The committed secret cannot be decrypted by you.** It was encrypted with a throwaway key that is not in the repo. Generate your own key and re-encrypt before use ([docs/RUNBOOK.md](docs/RUNBOOK.md) section 0). The Alertmanager webhook and Grafana admin secrets exist only as `*.example.yaml` files.
-- **Placeholders remain.** Repository URLs in `gitops/` are `YOUR-USER`, the canary image name is a placeholder, and the backup bucket endpoint is `s3.example.invalid`. `restore-data` refuses to run until the endpoint is real.
+- **Placeholders remain.** The canary image `ghcr.io/souvik-biswas-dev/respawn-canary:0.1.0` is not built or pushed yet, and the backup bucket endpoint is `s3.example.invalid`. `restore-data` refuses to run until the endpoint is real.
 - **Some pins are from memory** and unchecked against upstream: k3s, ArgoCD, the Prometheus and Loki chart versions, Postgres, and Hetzner's `server_type`. Check them before a real run.
 - **Local VM differences.** `make local-up` has no cloud firewall or DNS, and its `delete-server` drill is `make local-destroy` plus `make local-up`.
 - **Promtail is deprecated** upstream in favour of Grafana Alloy. It is used here because it is what the plan specified.

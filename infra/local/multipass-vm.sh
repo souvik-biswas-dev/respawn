@@ -106,7 +106,7 @@ all:
           respawn_protected: false
       vars:
         k3s_public_address: ${ip}
-        argocd_bootstrap_repo_url: https://github.com/YOUR-USER/respawn.git
+        argocd_bootstrap_repo_url: https://github.com/souvik-biswas-dev/respawn.git
 
 A rebuilt VM gets a new SSH host key. If ssh complains, run: ssh-keygen -R ${ip}
 SNIPPET

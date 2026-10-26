@@ -11,7 +11,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR-USER/respawn.git
+    repoURL: https://github.com/souvik-biswas-dev/respawn.git
     targetRevision: HEAD
     path: gitops/apps
   destination:
