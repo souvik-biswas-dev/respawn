@@ -1,7 +1,7 @@
 # Four child Applications for observability. The three Helm charts use two sources:
 # the upstream chart, plus this repo as "$values" so the values files stay in Git.
 # Chart versions are pinned from memory (unverified): check they exist before the first sync.
-# Replace YOUR-USER like in canary-app.yaml.
+# Replace souvik-biswas-dev like in canary-app.yaml.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -17,7 +17,7 @@ spec:
         releaseName: kps
         valueFiles:
           - $values/gitops/apps/monitoring/values/kube-prometheus-stack.yaml
-    - repoURL: https://github.com/YOUR-USER/respawn.git
+    - repoURL: https://github.com/souvik-biswas-dev/respawn.git
       targetRevision: HEAD
       ref: values
   destination:
@@ -47,7 +47,7 @@ spec:
         releaseName: loki
         valueFiles:
           - $values/gitops/apps/monitoring/values/loki.yaml
-    - repoURL: https://github.com/YOUR-USER/respawn.git
+    - repoURL: https://github.com/souvik-biswas-dev/respawn.git
       targetRevision: HEAD
       ref: values
   destination:
@@ -75,7 +75,7 @@ spec:
         releaseName: promtail
         valueFiles:
           - $values/gitops/apps/monitoring/values/promtail.yaml
-    - repoURL: https://github.com/YOUR-USER/respawn.git
+    - repoURL: https://github.com/souvik-biswas-dev/respawn.git
       targetRevision: HEAD
       ref: values
   destination:
@@ -97,7 +97,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR-USER/respawn.git
+    repoURL: https://github.com/souvik-biswas-dev/respawn.git
     targetRevision: HEAD
     path: gitops/apps/monitoring
   destination:

@@ -15,4 +15,4 @@ all:
         # Public address written into the fetched kubeconfig and the k3s API certificate.
         k3s_public_address: 203.0.113.20
         # REQUIRED for step 3: the Git URL ArgoCD will watch (public repo, https).
-        argocd_bootstrap_repo_url: https://github.com/YOUR-USER/respawn.git
+        argocd_bootstrap_repo_url: https://github.com/souvik-biswas-dev/respawn.git

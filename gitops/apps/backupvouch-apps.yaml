@@ -1,5 +1,5 @@
 # BackupVouch (github.com/souvik-biswas-dev/backupvouch) as the backup layer. Two Applications,
-# so the operator's CRD exists before anything uses it. Replace YOUR-USER as in canary-app.yaml.
+# so the operator's CRD exists before anything uses it. Replace souvik-biswas-dev as in canary-app.yaml.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR-USER/respawn.git
+    repoURL: https://github.com/souvik-biswas-dev/respawn.git
     targetRevision: HEAD
     path: gitops/apps/backupvouch/operator
   destination:
@@ -30,7 +30,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR-USER/respawn.git
+    repoURL: https://github.com/souvik-biswas-dev/respawn.git
     targetRevision: HEAD
     path: gitops/apps/backupvouch/config
   destination:
