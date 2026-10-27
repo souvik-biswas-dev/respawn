@@ -82,7 +82,7 @@ load_storage_settings() {
   PREFIX="$(policy_field .spec.storage.prefix)"
   use_tls="$(policy_field .spec.storage.useTLS)"
   secret="$(policy_field .spec.storage.credentialsSecretRef.name)"
-  [ -n "$endpoint" ] && [ -n "$BUCKET" ] && [ -n "$secret" ] || die "BackupPolicy ${POLICY} has no storage settings"
+  if [ -z "$endpoint" ] || [ -z "$BUCKET" ] || [ -z "$secret" ]; then die "BackupPolicy ${POLICY} has no storage settings"; fi
   case "$endpoint" in *example.invalid*) die "storage endpoint is still the placeholder (${endpoint}); set a real off-server S3 endpoint in gitops/apps/backupvouch/config/canary-backuppolicy.yaml" ;; esac
   if [ "$use_tls" = "true" ]; then ENDPOINT_URL="https://${endpoint}"; else ENDPOINT_URL="http://${endpoint}"; fi
   AWS_ACCESS_KEY_ID="$(secret_field "$secret" accessKey)"

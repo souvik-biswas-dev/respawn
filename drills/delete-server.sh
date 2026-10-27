@@ -118,7 +118,7 @@ real() {
   guard_checks
   need kubectl; need ssh; need ansible-playbook; need sops; need aws
   [ "$VIA" = "terraform" ] || [ "$VIA" = "local" ] || die "--via terraform|local is required"
-  [ -n "$AGE_KEY" ] && [ -f "$AGE_KEY" ] || die "--age-key FILE is required (the age private key from your safe store)"
+  if [ -z "$AGE_KEY" ] || [ ! -f "$AGE_KEY" ]; then die "--age-key FILE is required (the age private key from your safe store)"; fi
   if [ "$VIA" = "local" ]; then need multipass; else need "$TF"; fi
   [ -n "$TIMEOUT" ] || TIMEOUT=3600
   require_int --timeout "$TIMEOUT"

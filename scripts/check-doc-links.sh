@@ -32,7 +32,7 @@ for f in FILES:
         tok = tok.rstrip(".,:;")
         if not tok.startswith(ROOTS) or any(c in tok for c in "*<>{}$"):
             continue
-        if tok.rstrip("/") in GENERATED or tok in GENERATED:
+        if tok.rstrip("/") in GENERATED or any(tok.startswith(g + "/") for g in GENERATED):
             continue
         if not os.path.exists(tok):
             bad.append((f, tok))
