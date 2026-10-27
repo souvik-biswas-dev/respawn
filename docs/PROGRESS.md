@@ -2,7 +2,7 @@
 
 Update this at the end of every step. This file is how a fresh AI session (or a new account) knows where to resume.
 
-**Current step:** 10 done. The build is COMPLETE. Nothing has been run against a real server, and the CI workflow has NEVER run on GitHub. What is left is in "Only you can do this" below.
+**Current step:** 10 done. The build is COMPLETE. Nothing has been run against a real server, and the CI workflow ran green on GitHub for main only after two fixes (shellcheck 0.9 SC2015 and doc-link generated paths). What is left is in "Only you can do this" below.
 **Last zip:** respawn-step-10.zip (final release)
 
 ## Checklist
