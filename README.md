@@ -1,5 +1,7 @@
 # Respawn
 
+[![ci](https://github.com/souvik-biswas-dev/respawn/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/souvik-biswas-dev/respawn/actions/workflows/ci.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [live console](https://respawn-console.pages.dev)
+
 A small-team platform defined entirely in code, built to answer one question with numbers: **if the server dies at 2 a.m., how long until it is back, and how much data is gone?**
 
 Most infra demo repos show that something deploys. Respawn is built to show that it **recovers**: scripts break it on purpose, time the recovery, and write the result to a JSON file that a static site renders.
@@ -97,7 +99,7 @@ Run `make help` for every target.
 
 ## Checks
 
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs: `terraform fmt -check` and `validate`, tflint, ansible-lint and a playbook syntax check, kustomize plus kubeconform on the GitOps manifests, promtool rule check and unit tests, shellcheck on every script, gitleaks on the tree and the history, a simulated run of every drill with schema validation of all results, the console build, and a check that every file path mentioned in the docs exists. Actions are pinned to commit SHAs and downloaded tools to SHA-256 checksums. Locally, `make lint` runs everything except the console build. The workflow itself has not run on GitHub yet; what was run locally is recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs: `terraform fmt -check` and `validate`, tflint, ansible-lint and a playbook syntax check, kustomize plus kubeconform on the GitOps manifests, promtool rule check and unit tests, shellcheck on every script, gitleaks on the tree and the history, a simulated run of every drill with schema validation of all results, the console build, and a check that every file path mentioned in the docs exists. Actions are pinned to commit SHAs and downloaded tools to SHA-256 checksums. Locally, `make lint` runs everything except the console build. The workflow runs green on GitHub for `main`. It checks the code and the configuration only; nothing has been run against a real server yet, and what was verified locally is recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 ## Docs
 
